@@ -1,10 +1,14 @@
-const { response } = require('express')
 const express = require('express')
 const bcrypt = require('bcrypt-nodejs')
+const cors = require('cors')
 const app = express() // new run of express
-const PORT = 3000
+const PORT = 3001
 
-app.use(express.urlencoded({extended:false})) // middleware to parse body
+app.use(cors())
+
+app.use(express.json({
+  type: ['application/json', 'text/plain']
+}))
 
 const database = {
   users: [
@@ -12,7 +16,7 @@ const database = {
       id: 1,
       name: 'james',
       email: 'james@gmail.com',
-      password: 123123,
+      password: "123123",
       entries: 0,
       joined: new Date(),
     },
@@ -24,9 +28,6 @@ const database = {
       entries: 0,
       joined: new Date(),
     }
-  ],
-  login: [
-
   ]
 }
 // function to get user
@@ -41,32 +42,27 @@ const getUser = (id) => {
   }
 }
 app.get('/', (req, res) => {
-  res.send('Hello World')
+  res.json(database)
 })
 
 // signin route for posting to server and authenticate
-app.post('/signin', (req, res) => {
-  bcrypt.compare("123123", "$2a$10$aG9CEZrBbtpg9KIwKm9ZUO3tRzBu.c.F7LSYYJk5hiDXGYcdJIY3e", (err, res) => {
-    console.log('guess', res)
-  })
-
-  bcrypt.compare("1231233", "$2a$10$aG9CEZrBbtpg9KIwKm9ZUO3tRzBu.c.F7LSYYJk5hiDXGYcdJIY3e", (err, res) => {
-    console.log('guess', res)
-  })
+app.post('/signin', (req, res) => { 
   // authenticate user
-  if (req.body.email === database.users.email && req.body.password === database.users.password){
-    res.send('you are signed in')
+  if (req.body.email == database.users[0].email && req.body.password == database.users[0].password){
+    res.status(200).json("success")
   } else {
     // res.send('authentication failed')
     res.status(400).json('error logging in')
   }
 })
+
 app.post('/register', (req, res) => {
+  const { name, email, password } = req.body
   // get information from user
   //database.users.push
+  console.log(' at register route')
+  console.log('name', name)
   const newId = database.users.length
-  const { name, email, password } = req.body
-    
   // hash password using bcrypt
   bcrypt.hash(password, null, null, (err, hash) => {
     console.log(hash)
@@ -84,8 +80,8 @@ app.post('/register', (req, res) => {
       joined: joined
     }
     )
-    console.log(database)
-  res.json("Added successfully")
+    // console.log(database)
+  res.json(database.users[database.users.length-1])
 })
 
 //get user by looping through 'database'
@@ -107,15 +103,3 @@ app.put('/image', (req, res) => {
 app.listen(PORT, () => {
   console.log(`listening on port ${PORT}`)
 })
-
-
-
-/*
-'/' root route to
-/signin POST request to send data and authenticate
-  * POST = success/fail
-/register POST = send data to database to save new user
-/profile:userId = GET request of user information and return the user dashboard
-/image => Put --> user
-
-*/
