@@ -38,7 +38,7 @@ const getUser = (id) => {
   if (found.length == 1) {
     return found[0]
   } else {
-    return 'user not found'
+    return false
   }
 }
 app.get('/', (req, res) => {
@@ -48,6 +48,7 @@ app.get('/', (req, res) => {
 // signin route for posting to server and authenticate
 app.post('/signin', (req, res) => { 
   // authenticate user
+  console.log(req.body.email, req.body.password)
   if (req.body.email == database.users[0].email && req.body.password == database.users[0].password){
     res.status(200).json("success")
   } else {
@@ -59,12 +60,9 @@ app.post('/signin', (req, res) => {
 app.post('/register', (req, res) => {
   const { name, email, password } = req.body
   // get information from user
-  //database.users.push
-  console.log(' at register route')
-  console.log('name', name)
   const newId = database.users.length
   // hash password using bcrypt
-  bcrypt.hash(password, null, null, (err, hash) => {
+  bcrypt.hash(req.body.password, null, null, (err, hash) => {
     console.log(hash)
   })
   
@@ -95,8 +93,13 @@ app.put('/image', (req, res) => {
   // console.log(database)
   const { id } = req.body // get id from parsing body
   console.log(id)
-  res.send(id)
-  // res.json(getUser(1))
+  
+  if(getUser(id)) {
+    user = getUser(id)
+    user.entries += 1
+  } else {
+    res.status(400).json('user not found')
+  }
   
 })
 
