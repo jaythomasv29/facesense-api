@@ -23,26 +23,6 @@ app.use(express.json({
   type: ['application/json', 'text/plain']
 }))
 
-const database = {
-  users: [
-    {
-      id: 1,
-      name: 'james',
-      email: 'james@gmail.com',
-      password: "123123",
-      entries: 0,
-      joined: new Date(),
-    },
-    {
-      id: 2,
-      name: 'jim',
-      email: 'jim@gmail.com',
-      password: 123123,
-      entries: 0,
-      joined: new Date(),
-    }
-  ]
-}
 // function to get user
 const getUser = (id) => {
   const found = database.users.filter(user => {
@@ -55,7 +35,7 @@ const getUser = (id) => {
   }
 }
 app.get('/', (req, res) => {
-  res.json(database)
+  res.json('root')
 })
 
 // signin route for posting to server and authenticate
@@ -139,7 +119,7 @@ knex('users')
   .returning('entries')
   .then(entries => {
     console.log(entries)
-    res.json(entries[0])
+    res.json(entries)
   })
   .catch(err => res.status(400).json("error in updating entries"))
 })
