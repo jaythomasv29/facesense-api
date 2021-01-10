@@ -3,6 +3,19 @@ const bcrypt = require('bcrypt-nodejs')
 const cors = require('cors')
 const app = express() // new run of express
 const PORT = 3001
+const knex = require('knex')({
+    client: 'pg',
+    connection: {
+      host : '127.0.0.1',
+      user : 'jamesvongampai',
+      password : '',
+      database : 'smart-brain',
+  }
+})
+
+knex.select('*').from('users').then(data => {
+  console.log(data)
+})
 
 app.use(cors())
 
@@ -48,59 +61,87 @@ app.get('/', (req, res) => {
 // signin route for posting to server and authenticate
 app.post('/signin', (req, res) => { 
   // authenticate user
-  console.log(req.body.email, req.body.password)
-  if (req.body.email == database.users[0].email && req.body.password == database.users[0].password){
-    res.status(200).json("success")
-  } else {
-    // res.send('authentication failed')
-    res.status(400).json('error logging in')
-  }
+ knex.select('email', 'hash').from('login')
+ .where('email', '=', req.body.email)
+ .then(data => {
+   const isValid = bcrypt.compareSync(req.body.password, data[0].hash)
+   console.log(isValid)
+   //check if password upon signin is valid
+   if(isValid) {
+     return knex.select('*').from('users')
+     .where('email', '=', req.body.email)
+     .then(user => {
+       console.log(user)
+       res.status(200).json(user[0])
+     })
+     .catch(err => res.status(400).json('unable to get user'))
+   } else {  // else if the hash is not valid pw
+     res.status(400).json('wrong credientials')
+   }
+ })
 })
 
 app.post('/register', (req, res) => {
+  // get information from user from body
   const { name, email, password } = req.body
-  // get information from user
-  const newId = database.users.length
-  // hash password using bcrypt
-  bcrypt.hash(req.body.password, null, null, (err, hash) => {
-    console.log(hash)
+  const hash = bcrypt.hashSync(password)
+  knex.transaction(trx => {
+    //update login table
+    trx.insert({
+      hash: hash,
+      email: email
+    })
+    .into('login')
+    .returning('email')
+    .then(loginEmail => {
+      return trx('users')
+        // insert user into database
+        .returning('*')
+        .insert({
+          name: loginEmail[0],
+          email: email,
+          joined: new Date()
+        }).then(user => {
+          // a promise to handle the success
+          res.json(user[0])
+        })  
+    })
+    .then(trx.commit)
+    .catch(trx.rollback)
   })
-  
-  const entries = 0
-  const joined = new Date()
-  database.users.push(
-    {
-      id: newId,
-      name: name,
-      email: email,
-      password: password,
-      entries: entries,
-      joined: joined
-    }
-    )
-    // console.log(database)
-  res.json(database.users[database.users.length-1])
+  .catch(err => res.status(400).json('unable to register'))
 })
 
 //get user by looping through 'database'
 app.get('/profile/:id', (req, res) => {
   const { id } = req.params
-  res.json(getUser(id))
+  knex.select('*').from('users').where('id', id)
+  .then(user => {
+    if(user.length){
+      console.log(user[0])
+      res.json(user[0])
+    } else {
+      res.status(400).json('user not found')
+    }
+  })
+  .catch(err => res.status(400).json('error getting user'))
+ 
 })
 
 //find the id of user 
 app.put('/image', (req, res) => {
   // console.log(database)
   const { id } = req.body // get id from parsing body
-  console.log(id)
-  
-  if(getUser(id)) {
-    user = getUser(id)
-    user.entries += 1
-  } else {
-    res.status(400).json('user not found')
-  }
-  
+// update entries and increase the count
+knex('users')
+  .where('id', '=', id)
+  .increment('entries', 1)
+  .returning('entries')
+  .then(entries => {
+    console.log(entries)
+    res.json(entries[0])
+  })
+  .catch(err => res.status(400).json("error in updating entries"))
 })
 
 app.listen(PORT, () => {
